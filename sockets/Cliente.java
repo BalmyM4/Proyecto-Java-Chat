@@ -2,14 +2,17 @@
 
 import javax.swing.*;
 import java.awt.event.*;
-import java.io.DataOutputStream;
+//import java.io.DataOutputStream;
 import java.io.IOException;
+// import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.*;
 
 public class Cliente {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		
 		MarcoCliente mimarco=new MarcoCliente();
 		
@@ -35,7 +38,7 @@ class MarcoCliente extends JFrame{
 	
 }
 
-class LaminaMarcoCliente extends JPanel{
+class LaminaMarcoCliente extends JPanel implements Runnable{
 	
 	public LaminaMarcoCliente(){
 		
@@ -59,7 +62,10 @@ class LaminaMarcoCliente extends JPanel{
 		EnviarTexto mievento = new EnviarTexto();
 		miboton.addActionListener(mievento);
 		
-		add(miboton);	
+		add(miboton);
+		
+		Thread miHilo = new Thread(this);
+		miHilo.start();
 		
 	}
 	
@@ -68,17 +74,22 @@ class LaminaMarcoCliente extends JPanel{
 
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			// TODO Auto-generated method stub
 
 			// Aqui construiremos el socket
 			try{
 				Socket misocket = new Socket("192.168.1.206",9999);
+				
+				paqueteDatos data = new paqueteDatos();
+				data.setNick(nick.getText());
+				data.setIp(ip.getText());
+				data.setMensaje(campo1.getText());
 
-				DataOutputStream flujo_salida = new DataOutputStream(misocket.getOutputStream());
+				ObjectOutputStream enviar_paquete = new ObjectOutputStream(misocket.getOutputStream());
 
-				flujo_salida.writeUTF(campo1.getText());
-
-				flujo_salida.close();
+				enviar_paquete.writeObject(data);
+				//DataOutputStream flujo_salida = new DataOutputStream(misocket.getOutputStream());
+				//flujo_salida.writeUTF(campo1.getText());
+				//flujo_salida.close();
 			} catch(UnknownHostException e1){
 				e1.printStackTrace();
 			} catch(IOException e1){
@@ -97,5 +108,52 @@ class LaminaMarcoCliente extends JPanel{
 	
 	private JTextArea campochat;
 	private JButton miboton;
+	@Override
+	public void run() {
+		try{
+
+			ServerSocket servidor_cliente = new ServerSocket(9090);
+			Socket cliente;
+			paqueteDatos paquete_recibido;
+
+			while (true) {
+				cliente = servidor_cliente.accept();
+				ObjectInputStream flujoentrada = new ObjectInputStream(cliente.getInputStream());
+				paquete_recibido = (paqueteDatos) flujoentrada.readObject();
+
+				campochat.append("\n" + paquete_recibido.getNick() + " : " + paquete_recibido.getMensaje());
+			}
+		}catch(Exception e){
+			System.out.println(e.getMessage());
+		}
+	}
 	
+}
+
+class paqueteDatos implements Serializable{
+	private String nick, ip, mensaje;
+
+	public String getNick() {
+		return nick;
+	}
+
+	public void setNick(String nick) {
+		this.nick = nick;
+	}
+
+	public String getIp() {
+		return ip;
+	}
+
+	public void setIp(String ip) {
+		this.ip = ip;
+	}
+
+	public String getMensaje() {
+		return mensaje;
+	}
+
+	public void setMensaje(String mensaje) {
+		this.mensaje = mensaje;
+	}
 }

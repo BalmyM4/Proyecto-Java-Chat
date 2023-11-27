@@ -1,18 +1,20 @@
 
 
-import javax.swing.*;
-
-import java.awt.*;
-import java.io.DataInput;
-import java.io.DataInputStream;
+import java.awt.BorderLayout;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+// import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
 
 public class Servidor  {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		
 		MarcoServidor mimarco=new MarcoServidor();
 		
@@ -47,25 +49,40 @@ class MarcoServidor extends JFrame implements Runnable{
 
 	@Override
 	public void run() {
-		// TODO Auto-generated method stub
 		//System.out.println("Listening...");
 
 		try {
 			ServerSocket servidor = new ServerSocket(9999);
+
+			String nick, ip, mensaje;
+			
+			paqueteDatos paquete_recibido;
+
 			while (true) {
 				Socket misocket = servidor.accept();
 
-				DataInputStream flujo_entrada = new DataInputStream(misocket.getInputStream());
+				ObjectInputStream paquete_datos = new ObjectInputStream(misocket.getInputStream());
 
-				String mensaje_texto = flujo_entrada.readUTF();
+				paquete_recibido = (paqueteDatos) paquete_datos.readObject();
 
-				areatexto.append("\n" + mensaje_texto);
+				nick = paquete_recibido.getNick();
 
+				ip = paquete_recibido.getIp();
+
+				mensaje = paquete_recibido.getMensaje();
+
+				areatexto.append("\n" + nick + " : " + mensaje + " Para: " + ip);
+
+				Socket enviarDataDestinatario = new Socket(ip,  9090);
+				ObjectOutputStream paquete_reenviar = new ObjectOutputStream(enviarDataDestinatario.getOutputStream());
+				
+				paquete_reenviar.writeObject(paquete_recibido);
+				paquete_reenviar.close();
+				enviarDataDestinatario.close();
 				misocket.close();
 			}
 			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+		} catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 	}
